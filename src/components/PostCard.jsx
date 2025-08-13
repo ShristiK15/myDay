@@ -3,16 +3,16 @@ import appwriteService from "../appwrite/config";
 import {Link} from 'react-router-dom'
 
 //this is the syntax of appwrite that you have to pass the id as $id in the function
-function PostCard({$id, title,featuredImage})
-{console.log("image:",featuredImage)
+function PostCard({post:{$id, title,featuredImage}})
+{
     return(
         <Link to={`/journal/${$id}`}>
             
                     <div className='w-full bg-gray-100 rounded-xl p-4'>
             <div className='w-full justify-center mb-4'>
                 {/* featuredImage is the id of individual pictures and $id is the id of the whole post */}
-                {/* <img src={appwriteService.getFilePreview(featuredImage)} alt={title}
-                className='rounded-xl' /> */}
+                <img src={appwriteService.getFilePreview(featuredImage)} alt={title}
+                className='rounded-xl' />
                  </div>
             <h2
             className='text-xl font-bold'
