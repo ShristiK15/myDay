@@ -1,15 +1,21 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import * as Icons from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { NAV_ITEMS } from '../../utils/constants';
 
 export default function Sidebar() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/sign-in');
+  };
 
   return (
-    <aside className="app-sidebar fixed left-0 top-0 z-40 flex h-screen w-64 flex-col border-r border-[#d4c4b0]/40 px-4 py-6">
+    <aside className="app-sidebar fixed left-0 top-0 z-40 flex h-screen w-64 flex-col border-r border-tan/40 px-4 py-6">
       <div className="mb-8 flex items-center gap-2 px-2">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--accent)] text-white">
+        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-(--accent) text-white">
           <Icons.BookOpen className="h-5 w-5" />
         </div>
         <span className="font-serif text-2xl font-bold">MyDay</span>
@@ -25,8 +31,8 @@ export default function Sidebar() {
               className={({ isActive }) =>
                 `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors ${
                   isActive
-                    ? 'bg-[var(--accent)] text-white'
-                    : 'text-[var(--text-primary)]/80 hover:bg-black/5'
+                    ? 'bg-(--accent) text-white'
+                    : 'text-(--text-primary)/80 hover:bg-black/5'
                 }`
               }
             >
@@ -42,8 +48,17 @@ export default function Sidebar() {
         Keep your streak alive today
       </div>
 
-      <div className="flex items-center gap-3 border-t border-[#d4c4b0]/50 pt-4">
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--accent)] text-sm font-medium text-white">
+      <button
+        type="button"
+        onClick={handleLogout}
+        className="mb-4 flex w-full items-center justify-center gap-2 rounded-xl border border-tan/60 bg-white/40 px-3 py-2.5 text-sm text-(--text-primary)/80 transition-colors hover:bg-black/5"
+      >
+        <Icons.LogOut className="h-4 w-4" />
+        Logout
+      </button>
+
+      <div className="flex items-center gap-3 border-t border-tan/50 pt-4">
+        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-(--accent) text-sm font-medium text-white">
           {user?.avatar ? (
             <img src={user.avatar} alt="" className="h-full w-full rounded-full object-cover" />
           ) : (

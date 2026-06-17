@@ -7,27 +7,53 @@ import { useAuth } from '../../context/AuthContext';
 export default function SignUp() {
   const [form, setForm] = useState({ name: '', email: '', password: '', confirm: '' });
   const [showPass, setShowPass] = useState(false);
-  const [agreed, setAgreed] = useState(false);
+  const [agreed, setAgreed] = useState(true);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { register, googleLogin } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (form.password !== form.confirm) return setError('Passwords do not match');
-    if (!agreed) return setError('Please accept the terms');
-    setError('');
-    setLoading(true);
-    try {
-      await register(form.name, form.email, form.password);
-      navigate('/dashboard');
-    } catch (err) {
-      setError(err.response?.data?.message || 'Registration failed');
-    } finally {
-      setLoading(false);
-    }
+  const getPasswordStrength = (password) => {
+    const checks = {
+      length: password.length >= 8,
+      uppercase: /[A-Z]/.test(password),
+      lowercase: /[a-z]/.test(password),
+      number: /[0-9]/.test(password),
+      special: /[^A-Za-z0-9]/.test(password),
+    };
+    const passed = Object.values(checks).filter(Boolean).length;
+    return { checks, score: passed };
   };
+
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  if (form.password !== form.confirm) return setError('Passwords do not match');
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(form.email)) return setError('Please enter a valid email address');
+  // if (!agreed) return setError('Please accept the terms');
+
+  const { score, checks } = getPasswordStrength(form.password);
+  if (score < 4) {
+    const missing = [];
+    if (!checks.length)    missing.push('at least 8 characters');
+    if (!checks.uppercase) missing.push('an uppercase letter');
+    if (!checks.lowercase) missing.push('a lowercase letter');
+    if (!checks.number)    missing.push('a number');
+    if (!checks.special)   missing.push('a special character (!@#$...)');
+    return setError(`Weak password. Please include: ${missing.join(', ')}.`);
+  }
+
+  setError('');
+  setLoading(true);
+  try {
+    await register(form.name, form.email, form.password);
+    navigate('/dashboard');
+  } catch (err) {
+    setError(err.response?.data?.message || 'Registration failed');
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="flex min-h-screen flex-row-reverse">
