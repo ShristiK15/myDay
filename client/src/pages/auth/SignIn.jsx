@@ -80,7 +80,7 @@ export default function SignIn() {
         <div className="mx-auto w-full max-w-md">
           <div className="mb-8 text-center">
             <BookOpen className="mx-auto mb-2 h-8 w-8 text-[#4a3728]" />
-            <h1 className="font-serif text-4xl font-bold text-[#4a3728]">Welcome Back 👋</h1>
+            <h1 className="font-serif text-4xl font-bold text-[#4a3728]">Welcome Back </h1>
             <p className="mt-1 font-serif italic text-[#6f4e37]">Your journal missed you.</p>
           </div>
 
@@ -95,8 +95,8 @@ export default function SignIn() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="input-field pl-10"
-                  placeholder="you@email.com"
+                  className="input-field !pl-10"
+                  placeholder="your@email.com"
                   required
                 />
               </div>
@@ -109,7 +109,7 @@ export default function SignIn() {
                   type={showPass ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="input-field pl-10 pr-10"
+                  className="input-field !pl-10 pr-10"
                   placeholder="••••••••"
                   required
                 />

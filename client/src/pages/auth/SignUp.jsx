@@ -60,7 +60,7 @@ export default function SignUp() {
             </div>
             <span className="font-serif text-2xl font-bold">MyDay</span>
           </div>
-          <h1 className="font-serif text-4xl font-bold text-[#4a3728]">Start Your Story ✍️</h1>
+          <h1 className="font-serif text-4xl font-bold text-[#4a3728]">Start Your Story</h1>
           <p className="mb-8 font-serif italic text-[#6f4e37]">Every great journey begins with a single page.</p>
 
           {error && <p className="mb-4 rounded-lg bg-red-100 p-3 text-sm text-red-800">{error}</p>}
@@ -80,7 +80,7 @@ export default function SignUp() {
                     type={type}
                     value={form[key]}
                     onChange={(e) => setForm({ ...form, [key]: e.target.value })}
-                    className="input-field pl-10"
+                    className="input-field !pl-10"
                     required
                     minLength={key.includes('password') ? 6 : undefined}
                   />
@@ -96,13 +96,13 @@ export default function SignUp() {
                 </div>
               </div>
             ))}
-            <label className="flex items-start gap-2 text-sm">
+            {/* <label className="flex items-start gap-2 text-sm">
               <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} className="mt-1" />
               <span>
                 I agree to the <a href="#" className="underline">Terms of Service</a> and{' '}
                 <a href="#" className="underline">Privacy Policy</a>
               </span>
-            </label>
+            </label> */}
             <button type="submit" disabled={loading} className="btn-primary w-full font-serif text-lg">
               Create My Journal
             </button>
