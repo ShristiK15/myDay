@@ -25,8 +25,8 @@ export const NAV_ITEMS = [
   // { path: '/timeline', label: 'Memories Timeline', icon: 'Images' },
   { path: '/gallery', label: 'Photo Gallery', icon: 'Camera' },
   { path: '/letters', label: 'Future Letters', icon: 'Mail' },
-  { path: '/reflection', label: 'Monthly Reflection', icon: 'Calendar' },
-  { path: '/yearly', label: 'Yearly Review', icon: 'TrendingUp' },
+  // { path: '/reflection', label: 'Monthly Reflection', icon: 'Calendar' },
+  // { path: '/yearly', label: 'Yearly Review', icon: 'TrendingUp' },
   { path: '/profile', label: 'Profile', icon: 'User' },
   { path: '/settings', label: 'Settings', icon: 'Settings' },
 ];
