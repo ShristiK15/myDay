@@ -5,6 +5,7 @@ export const getLetters = asyncHandler(async (req, res) => {
   const letters = await FutureLetter.find({ userId: req.user._id }).sort({ openDate: 1 });
   const now = new Date();
 
+  const drafts = [];
   const waiting = [];
   const openable = [];
   const opened = [];
@@ -12,10 +13,17 @@ export const getLetters = asyncHandler(async (req, res) => {
   for (const letter of letters) {
     if (letter.status === 'Opened') opened.push(letter);
     else if (letter.status === 'Sealed' && letter.openDate <= now) openable.push(letter);
-    else waiting.push(letter);
+    else if (letter.status === 'Sealed') waiting.push(letter);
+    else drafts.push(letter);
   }
 
-  res.json({ waiting, openable, opened, all: letters });
+  res.json({ drafts, waiting, openable, opened, all: letters });
+});
+
+export const getLetterById = asyncHandler(async (req, res) => {
+  const letter = await FutureLetter.findOne({ _id: req.params.id, userId: req.user._id });
+  if (!letter) return res.status(404).json({ message: 'Letter not found' });
+  res.json(letter);
 });
 
 export const createLetter = asyncHandler(async (req, res) => {
@@ -26,7 +34,7 @@ export const createLetter = asyncHandler(async (req, res) => {
 export const updateLetter = asyncHandler(async (req, res) => {
   const letter = await FutureLetter.findOne({ _id: req.params.id, userId: req.user._id });
   if (!letter) return res.status(404).json({ message: 'Letter not found' });
-  if (letter.status === 'Opened') return res.status(400).json({ message: 'Cannot edit opened letter' });
+  if (letter.status === 'Opened' || letter.status === 'Sealed') return res.status(400).json({ message: 'Cannot edit this letter' });
   Object.assign(letter, req.body);
   await letter.save();
   res.json(letter);

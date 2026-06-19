@@ -1,7 +1,7 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { Sparkles, Upload, Mic, Square, Save } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Sparkles, Upload, Save, Maximize2, X } from 'lucide-react';
 import api from '../services/api';
 import PaperCard from '../components/ui/PaperCard';
 import { MOODS, MOOD_EMOJI, formatDate, getQuoteOfDay, getRandomPrompt } from '../utils/constants';
@@ -14,14 +14,25 @@ export default function WriteEntry() {
   const [reflectionAnswer, setReflectionAnswer] = useState('');
   const [photo, setPhoto] = useState(null);
   const [photoPreview, setPhotoPreview] = useState('');
-  const [recording, setRecording] = useState(false);
-  const [voiceBlob, setVoiceBlob] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [contentError, setContentError] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const contentRef = useRef(null);
   const prompt = useState(getRandomPrompt)[0];
   const quote = getQuoteOfDay();
-  const mediaRef = useRef(null);
-  const recorderRef = useRef(null);
-  const chunksRef = useRef([]);
+
+  useEffect(() => {
+    if (!expanded) return;
+    const handleKey = (e) => {
+      if (e.key === 'Escape') setExpanded(false);
+    };
+    window.addEventListener('keydown', handleKey);
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', handleKey);
+      document.body.style.overflow = '';
+    };
+  }, [expanded]);
 
   const handlePhoto = (e) => {
     const file = e.target.files?.[0];
@@ -31,41 +42,29 @@ export default function WriteEntry() {
     }
   };
 
-  const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
-      chunksRef.current = [];
-      recorder.ondataavailable = (e) => chunksRef.current.push(e.data);
-      recorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
-        setVoiceBlob(blob);
-        stream.getTracks().forEach((t) => t.stop());
-      };
-      recorder.start();
-      recorderRef.current = recorder;
-      setRecording(true);
-    } catch {
-      alert('Microphone access denied');
-    }
-  };
-
-  const stopRecording = () => {
-    recorderRef.current?.stop();
-    setRecording(false);
+  const handleContentChange = (e) => {
+    setContent(e.target.value);
+    if (contentError) setContentError(false);
   };
 
   const handleSave = async () => {
+    if (!content.trim()) {
+      setContentError(true);
+      setExpanded(false);
+      contentRef.current?.focus();
+      return;
+    }
+    setContentError(false);
+
     setSaving(true);
     const form = new FormData();
-    form.append('content', content);
-    form.append('title', title || content.slice(0, 50));
+    form.append('content', content.trim());
+    form.append('title', title || reflectionAnswer.slice(0, 50));
     form.append('mood', mood);
     form.append('reflectionPrompt', prompt);
     form.append('reflectionAnswer', reflectionAnswer);
     form.append('date', new Date().toISOString());
     if (photo) form.append('photo', photo);
-    if (voiceBlob) form.append('voice', voiceBlob, 'voice-note.webm');
 
     try {
       const { data } = await api.post('/entries', form, {
@@ -138,45 +137,40 @@ export default function WriteEntry() {
 
         <div className="mt-8">
           <p className="font-serif text-lg font-bold">{prompt}</p>
-          <input
+          <textarea
             value={reflectionAnswer}
             onChange={(e) => setReflectionAnswer(e.target.value)}
             className="input-field mt-2"
             placeholder="Your reflection..."
-          />
+            rows={3}
+          />  
         </div>
 
         <div className="mt-6">
+          <div className="mb-2 flex items-center justify-between">
+            <p className="text-sm font-medium">
+              Your Entry <span className="text-red-500">*</span>
+            </p>
+            <button
+              type="button"
+              onClick={() => setExpanded(true)}
+              className="flex items-center gap-1 text-sm opacity-60 transition hover:opacity-100"
+            >
+              <Maximize2 className="h-3.5 w-3.5" /> Expand
+            </button>
+          </div>
           <textarea
+            ref={contentRef}
             value={content}
-            onChange={(e) => setContent(e.target.value)}
+            onChange={handleContentChange}
             placeholder="Dear diary..."
             rows={10}
-            className="w-full rounded-xl border-l-4 border-[#d4c4b0] bg-[#faf8f5] p-4 font-serif text-lg leading-relaxed focus:outline-none"
-            style={{ borderLeftColor: 'var(--accent)' }}
+            className="w-full rounded-xl border-l-4 bg-[#faf8f5] p-4 font-serif text-lg leading-relaxed focus:outline-none"
+            style={{ borderLeftColor: contentError ? '#dc2626' : 'var(--accent)' }}
           />
-        </div>
-
-        <div className="mt-6 flex items-center gap-4">
-          {!recording ? (
-            <button
-              type="button"
-              onClick={startRecording}
-              className="flex items-center gap-2 rounded-full border border-[#d4c4b0] px-4 py-2 text-sm"
-            >
-              <Mic className="h-4 w-4" /> Voice journal
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={stopRecording}
-              className="flex items-center gap-2 rounded-full bg-red-100 px-4 py-2 text-sm text-red-800"
-            >
-              <Square className="h-4 w-4" /> Stop recording
-            </button>
+          {contentError && (
+            <p className="mt-2 text-sm text-red-600">Please write something before saving.</p>
           )}
-          {voiceBlob && <span className="text-sm text-green-700">Voice note ready</span>}
-          {voiceBlob && <audio ref={mediaRef} src={URL.createObjectURL(voiceBlob)} controls className="h-8" />}
         </div>
 
         <div className="mt-8 flex justify-end">
@@ -185,6 +179,44 @@ export default function WriteEntry() {
           </button>
         </div>
       </PaperCard>
+
+      <AnimatePresence>
+        {expanded && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-[#2b2420]/50 p-4 backdrop-blur-sm sm:p-10"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.97, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.97, y: 12 }}
+              transition={{ duration: 0.25, ease: 'easeOut' }}
+              className="relative flex h-full w-full max-w-3xl flex-col rounded-2xl bg-[#faf8f5] p-10 shadow-2xl"
+            >
+              <button
+                onClick={() => setExpanded(false)}
+                className="absolute right-5 top-5 rounded-full p-2 opacity-50 transition hover:bg-black/5 hover:opacity-100"
+              >
+                <X className="h-5 w-5" />
+              </button>
+
+              <p className="text-xs tracking-widest uppercase opacity-50">{formatDate(new Date())}</p>
+              <h3 className="mb-6 font-serif text-2xl font-bold">Dear Diary...</h3>
+
+              <textarea
+                autoFocus
+                value={content}
+                onChange={handleContentChange}
+                placeholder="Let your thoughts flow..."
+                className="flex-1 w-full resize-none border-none bg-transparent font-serif text-xl leading-relaxed focus:outline-none"
+              />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

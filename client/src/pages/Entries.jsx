@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, SlidersHorizontal, PenLine } from 'lucide-react';
+import { Search, SlidersHorizontal, PenLine, ChevronLeft, ChevronRight } from 'lucide-react';
 import api from '../services/api';
 import { MOODS, MOOD_EMOJI, formatShortDate } from '../utils/constants';
 
@@ -9,14 +9,27 @@ export default function Entries() {
   const [search, setSearch] = useState('');
   const [mood, setMood] = useState('');
   const [hasPhoto, setHasPhoto] = useState(false);
-  const [hasVoice, setHasVoice] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState({ page: 1, totalPages: 1, hasMore: false });
 
-  useEffect(() => {
-    const params = { search: search || undefined, mood: mood || undefined };
-    if (hasPhoto) params.hasPhoto = 'true';
-    if (hasVoice) params.hasVoice = 'true';
-    api.get('/entries', { params }).then((r) => setEntries(r.data.entries));
-  }, [search, mood, hasPhoto, hasVoice]);
+const [debouncedSearch, setDebouncedSearch] = useState(search);
+
+useEffect(() => {
+  const timer = setTimeout(() => {
+    setDebouncedSearch(search);
+  }, 400);
+
+  return () => clearTimeout(timer);
+}, [search]);
+
+useEffect(() => {
+  const params = { search: debouncedSearch || undefined, mood: mood || undefined, page };
+  if (hasPhoto) params.hasPhoto = 'true';
+  api.get('/entries', { params }).then((r) => {
+    setEntries(r.data.entries);
+    setPagination(r.data.pagination);
+  });
+}, [debouncedSearch, mood, hasPhoto, page]);
 
   const grouped = entries.reduce((acc, e) => {
     const key = new Date(e.date).toLocaleString('default', { month: 'long', year: 'numeric' }).toUpperCase();
@@ -37,15 +50,21 @@ export default function Entries() {
         <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 opacity-40" />
         <input
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setPage(1);
+          }}
           placeholder="Search your memories..."
-          className="input-field pl-11"
+          className="input-field !pl-11"
         />
       </div>
 
       <div className="mb-6 flex flex-wrap items-center gap-2">
         <button
-          onClick={() => setMood('')}
+          onClick={() => {
+            setMood('');
+            setPage(1);
+          }}
           className={`rounded-full px-4 py-1.5 text-sm ${!mood ? 'bg-[var(--accent)] text-white' : 'bg-[#ebe4d3]'}`}
         >
           All
@@ -53,23 +72,23 @@ export default function Entries() {
         {MOODS.map((m) => (
           <button
             key={m}
-            onClick={() => setMood(mood === m ? '' : m)}
+            onClick={() => {
+              setMood(mood === m ? '' : m);
+              setPage(1);
+            }}
             className={`rounded-full px-4 py-1.5 text-sm ${mood === m ? 'bg-[var(--accent)] text-white' : 'bg-[#ebe4d3]'}`}
           >
             {MOOD_EMOJI[m]} {m}
           </button>
         ))}
         <button
-          onClick={() => setHasPhoto(!hasPhoto)}
+          onClick={() => {
+            setHasPhoto(!hasPhoto);
+            setPage(1);
+          }}
           className={`rounded-full px-4 py-1.5 text-sm ${hasPhoto ? 'bg-[var(--accent)] text-white' : 'bg-[#ebe4d3]'}`}
         >
           Photos
-        </button>
-        <button
-          onClick={() => setHasVoice(!hasVoice)}
-          className={`rounded-full px-4 py-1.5 text-sm ${hasVoice ? 'bg-[var(--accent)] text-white' : 'bg-[#ebe4d3]'}`}
-        >
-          Voice
         </button>
         <button className="ml-auto flex items-center gap-1 text-sm opacity-60">
           <SlidersHorizontal className="h-4 w-4" /> Filter
@@ -115,6 +134,28 @@ export default function Entries() {
 
       {entries.length === 0 && (
         <p className="py-12 text-center font-serif text-xl italic opacity-50">No entries yet. Start writing!</p>
+      )}
+
+      {entries.length > 0 && pagination.totalPages > 1 && (
+        <div className="mt-8 flex items-center justify-center gap-4">
+          <button
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={pagination.page <= 1}
+            className="flex items-center gap-1 rounded-full bg-[#ebe4d3] px-4 py-2 text-sm disabled:opacity-30"
+          >
+            <ChevronLeft className="h-4 w-4" /> Prev
+          </button>
+          <span className="text-sm opacity-60">
+            Page {pagination.page} of {pagination.totalPages}
+          </span>
+          <button
+            onClick={() => setPage((p) => p + 1)}
+            disabled={!pagination.hasMore}
+            className="flex items-center gap-1 rounded-full bg-[#ebe4d3] px-4 py-2 text-sm disabled:opacity-30"
+          >
+            Next <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
       )}
     </div>
   );

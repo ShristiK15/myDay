@@ -19,11 +19,8 @@ const endOfDay = (d) => {
 
 export const createEntry = asyncHandler(async (req, res) => {
   const body = { ...req.body, userId: req.user._id };
-  if (req.files?.photo?.[0]) {
-    body.photoUrl = await uploadToCloudinary(req.files.photo[0].path, 'image');
-  }
-  if (req.files?.voice?.[0]) {
-    body.voiceNoteUrl = await uploadToCloudinary(req.files.voice[0].path, 'audio');
+  if (req.file) {
+    body.photoUrl = await uploadToCloudinary(req.file.path);
   }
   body.date = new Date();
 
@@ -33,12 +30,24 @@ export const createEntry = asyncHandler(async (req, res) => {
 });
 
 export const getEntries = asyncHandler(async (req, res) => {
-  const { search, mood, hasPhoto, hasVoice, startDate, endDate, limit = 50, skip = 0 } = req.query;
+  const {
+    search,
+    mood,
+    hasPhoto,
+    startDate,
+    endDate,
+    page = 1,
+    limit = 9,
+  } = req.query;
+
+  const pageNum = Math.max(1, Number(page));
+  const limitNum = Math.min(50, Math.max(1, Number(limit))); // cap at 50
+  const skip = (pageNum - 1) * limitNum;
+
   const filter = { userId: req.user._id };
 
   if (mood) filter.mood = mood;
   if (hasPhoto === 'true') filter.photoUrl = { $ne: '' };
-  if (hasVoice === 'true') filter.voiceNoteUrl = { $ne: '' };
   if (startDate || endDate) {
     filter.date = {};
     if (startDate) filter.date.$gte = startOfDay(startDate);
@@ -51,9 +60,23 @@ export const getEntries = asyncHandler(async (req, res) => {
     ];
   }
 
-  const entries = await Entry.find(filter).sort({ date: -1 }).skip(Number(skip)).limit(Number(limit));
-  const total = await Entry.countDocuments(filter);
-  res.json({ entries, total });
+  const [entries, total] = await Promise.all([
+    Entry.find(filter).sort({ date: -1 }).skip(skip).limit(limitNum),
+    Entry.countDocuments(filter),
+  ]);
+
+  const totalPages = Math.ceil(total / limitNum);
+
+  res.json({
+    entries,
+    pagination: {
+      total,
+      page: pageNum,
+      limit: limitNum,
+      totalPages,
+      hasMore: pageNum < totalPages,
+    },
+  });
 });
 
 export const getEntry = asyncHandler(async (req, res) => {
@@ -66,12 +89,20 @@ export const updateEntry = asyncHandler(async (req, res) => {
   const entry = await Entry.findOne({ _id: req.params.id, userId: req.user._id });
   if (!entry) return res.status(404).json({ message: 'Entry not found' });
 
-  const updates = { ...req.body };
-  if (req.files?.photo?.[0]) {
-    updates.photoUrl = await uploadToCloudinary(req.files.photo[0].path, 'image');
+  const now = new Date();
+  const createdAt = new Date(entry.createdAt);
+  const isSameDay =
+    createdAt.getFullYear() === now.getFullYear() &&
+    createdAt.getMonth() === now.getMonth() &&
+    createdAt.getDate() === now.getDate();
+
+  if (!isSameDay) {
+    return res.status(403).json({ message: 'Entries can only be edited on the day they were created' });
   }
-  if (req.files?.voice?.[0]) {
-    updates.voiceNoteUrl = await uploadToCloudinary(req.files.voice[0].path, 'audio');
+
+  const updates = { ...req.body };
+  if (req.file) {
+    updates.photoUrl = await uploadToCloudinary(req.file.path);
   }
   delete updates.date;
 
@@ -92,13 +123,62 @@ export const getDashboard = asyncHandler(async (req, res) => {
   const userId = req.user._id;
   const period = req.query.period || 'week';
 
-  const [analytics, last7, totalEntries, totalPhotos, totalVoice, calendarEntries] = await Promise.all([
+  const today = new Date();
+  const activityStart = new Date(today);
+  activityStart.setDate(activityStart.getDate() - 364);
+  activityStart.setHours(0, 0, 0, 0);
+
+  const [analytics, last7, totalEntries, totalPhotos, calendarEntries, activity365] = await Promise.all([
     getMoodAnalytics(userId, period),
     getLast7DaysActivity(userId, Entry),
     Entry.countDocuments({ userId }),
     Entry.countDocuments({ userId, photoUrl: { $ne: '' } }),
-    Entry.countDocuments({ userId, voiceNoteUrl: { $ne: '' } }),
     Entry.find({ userId }).select('date mood photoUrl title content').sort({ date: -1 }).limit(400).lean(),
+    Entry.aggregate([
+      { $match: { userId, date: { $gte: activityStart } } },
+      {
+        $group: {
+          _id: {
+            y: { $year: '$date' },
+            m: { $month: '$date' },
+            d: { $dayOfMonth: '$date' },
+          },
+          entryCount: { $sum: 1 },
+          moodTotal: {
+            $sum: {
+              $switch: {
+                branches: [
+                  { case: { $eq: ['$mood', 'Sad'] }, then: 1 },
+                  { case: { $eq: ['$mood', 'Neutral'] }, then: 2 },
+                  { case: { $eq: ['$mood', 'Okay'] }, then: 3 },
+                  { case: { $eq: ['$mood', 'Happy'] }, then: 4 },
+                  { case: { $eq: ['$mood', 'Amazing'] }, then: 5 },
+                ],
+                default: 0,
+              },
+            },
+          },
+          moodCount: {
+            $sum: {
+              $cond: [{ $ifNull: ['$mood', false] }, 1, 0],
+            },
+          },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          date: {
+            $dateFromParts: { year: '$_id.y', month: '$_id.m', day: '$_id.d' },
+          },
+          entryCount: 1,
+          averageMood: {
+            $cond: [{ $gt: ['$moodCount', 0] }, { $divide: ['$moodTotal', '$moodCount'] }, null],
+          },
+        },
+      },
+      { $sort: { date: 1 } },
+    ]),
   ]);
 
   const user = await User.findById(userId);
@@ -115,8 +195,9 @@ export const getDashboard = asyncHandler(async (req, res) => {
       longest: user.longestStreak,
       last7,
     },
-    stats: { totalEntries, totalPhotos, totalVoice },
+    stats: { totalEntries, totalPhotos },
     calendarEntries,
+    activity365,
   });
 });
 

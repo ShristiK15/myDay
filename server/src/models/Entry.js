@@ -7,10 +7,9 @@ const entrySchema = new mongoose.Schema(
   {
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     title: { type: String, default: '' },
-    content: { type: String, default: '' },
+    content: { type: String, default: '', required: true },
     mood: { type: String, enum: MOODS },
     photoUrl: { type: String, default: '' },
-    voiceNoteUrl: { type: String, default: '' },
     reflectionPrompt: { type: String, default: '' },
     reflectionAnswer: { type: String, default: '' },
     date: { type: Date, required: true, index: true },

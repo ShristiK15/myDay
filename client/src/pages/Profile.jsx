@@ -87,12 +87,14 @@ export default function Profile() {
         <label className="text-xs opacity-60">Display name</label>
         <input
           value={form.name}
+          readOnly
           onChange={(e) => setForm({ ...form, name: e.target.value })}
           className="input-field mb-3"
         />
         <label className="text-xs opacity-60">Email</label>
         <input
           value={form.email}
+          readOnly
           onChange={(e) => setForm({ ...form, email: e.target.value })}
           className="input-field"
         />

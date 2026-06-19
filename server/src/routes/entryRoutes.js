@@ -22,8 +22,8 @@ router.get('/timeline', getTimeline);
 router.get('/gallery', getGallery);
 router.get('/', getEntries);
 router.get('/:id', getEntry);
-router.post('/', upload.fields([{ name: 'photo', maxCount: 1 }, { name: 'voice', maxCount: 1 }]), createEntry);
-router.put('/:id', upload.fields([{ name: 'photo', maxCount: 1 }, { name: 'voice', maxCount: 1 }]), updateEntry);
+router.post('/', upload.single('photo'), createEntry);
+router.put('/:id', upload.single('photo'), updateEntry);
 router.delete('/:id', deleteEntry);
 
 export default router;

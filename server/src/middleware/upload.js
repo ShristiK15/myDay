@@ -17,16 +17,16 @@ const storage = multer.diskStorage({
 });
 
 const fileFilter = (_req, file, cb) => {
-  const allowed = /jpeg|jpg|png|gif|webp|mp3|wav|m4a|webm|ogg/;
+  const allowed = /jpeg|jpg|png|gif|webp/;
   const ext = allowed.test(path.extname(file.originalname).toLowerCase());
-  const mime = allowed.test(file.mimetype) || file.mimetype.startsWith('audio/') || file.mimetype.startsWith('image/');
+  const mime = allowed.test(file.mimetype) || file.mimetype.startsWith('image/');
   if (ext && mime) cb(null, true);
   else cb(new Error('Invalid file type'), false);
 };
 
 export const upload = multer({ storage, fileFilter, limits: { fileSize: 15 * 1024 * 1024 } });
 
-export const uploadToCloudinary = async (filePath, resourceType = 'image') => {
+export const uploadToCloudinary = async (filePath) => {
   try {
     const cloudinary = (await import('../config/cloudinary.js')).default;
     if (!process.env.CLOUDINARY_CLOUD_NAME) {
@@ -34,7 +34,7 @@ export const uploadToCloudinary = async (filePath, resourceType = 'image') => {
     }
     const result = await cloudinary.uploader.upload(filePath, {
       folder: 'myday',
-      resource_type: resourceType === 'audio' ? 'video' : 'image',
+      resource_type: 'image',
     });
     fs.unlink(filePath, () => {});
     return result.secure_url;

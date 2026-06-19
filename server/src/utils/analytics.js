@@ -32,12 +32,20 @@ export const getMoodAnalytics = async (userId, period = 'week') => {
     .sort({ date: 1 })
     .lean();
 
-  const trend = entries.map((e) => ({
-    date: e.date,
-    label: formatLabel(e.date, period),
-    mood: e.mood,
-    score: getMoodScore(e.mood),
-  }));
+  const byDateLabel = {};
+  entries.forEach((e) => {
+    const label = formatLabel(e.date, period);
+    if (!byDateLabel[label]) byDateLabel[label] = [];
+    byDateLabel[label].push(getMoodScore(e.mood));
+  });
+
+  const trend = Object.entries(byDateLabel).map(([label, scores]) => {
+    const avgScore = scores.reduce((a, b) => a + b, 0) / scores.length;
+    return {
+      label,
+      score: Math.round(avgScore * 10) / 10,
+    };
+  });
 
   const scores = entries.map((e) => getMoodScore(e.mood)).filter(Boolean);
   const average = scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
@@ -165,6 +173,5 @@ export const getMonthlyStats = async (userId, year, month) => {
     dominantMood: dominantMood?.[0] || null,
     dominantMoodDays: dominantMood?.[1] || 0,
     photos: entries.filter((e) => e.photoUrl).length,
-    voiceNotes: entries.filter((e) => e.voiceNoteUrl).length,
   };
 };

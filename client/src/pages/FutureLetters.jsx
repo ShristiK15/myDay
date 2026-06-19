@@ -1,49 +1,110 @@
 import { useState, useEffect } from 'react';
-import { Lock, Mail, Bell, Calendar } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Lock, Mail, Bell, Calendar, Pencil } from 'lucide-react';
 import { motion } from 'framer-motion';
 import api from '../services/api';
 import PaperCard from '../components/ui/PaperCard';
 
 export default function FutureLetters() {
-  const [letters, setLetters] = useState({ waiting: [], openable: [], opened: [] });
+  const navigate = useNavigate();
+  const [letters, setLetters] = useState({ drafts: [], waiting: [], openable: [], opened: [] });
+  const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [openDate, setOpenDate] = useState('');
   const [draftId, setDraftId] = useState(null);
+  const [savedMessage, setSavedMessage] = useState('');
 
   const load = () => api.get('/letters').then((r) => setLetters(r.data));
 
-  useEffect(() => {
-    load();
+  const defaultOpenDate = () => {
     const d = new Date();
     d.setFullYear(d.getFullYear() + 1);
-    setOpenDate(d.toISOString().split('T')[0]);
+    return d.toISOString().split('T')[0];
+  };
+
+  useEffect(() => {
+    load();
+    setOpenDate(defaultOpenDate());
   }, []);
 
-  const saveDraft = async () => {
-    if (draftId) {
-      await api.put(`/letters/${draftId}`, { content, openDate });
-    } else {
-      const { data } = await api.post('/letters', { content, openDate, status: 'Draft' });
-      setDraftId(data._id);
-    }
-    load();
-  };
-
-  const seal = async () => {
-    let id = draftId;
-    if (!id) {
-      const { data } = await api.post('/letters', { content, openDate, status: 'Draft' });
-      id = data._id;
-    }
-    await api.post(`/letters/${id}/seal`, { openDate });
+  const resetComposer = () => {
+    setTitle('');
     setContent('');
     setDraftId(null);
-    load();
+    setOpenDate(defaultOpenDate());
   };
+
+  const editDraft = (letter) => {
+    setDraftId(letter._id);
+    setTitle(letter.title || '');
+    setContent(letter.content || '');
+    setOpenDate(letter.openDate.split('T')[0]);
+  };
+
+const saveDraft = async () => {
+  if (!title.trim() || !content.trim()) {
+    alert('Title and content are required');
+    return;
+  }
+
+  try {
+    if (draftId) {
+      await api.put(`/letters/${draftId}`, { title, content, openDate });
+    } else {
+      const { data } = await api.post('/letters', {
+        title,
+        content,
+        openDate,
+        status: 'Draft',
+      });
+      setDraftId(data._id);
+    }
+
+    setSavedMessage('Draft saved');
+    setTimeout(() => setSavedMessage(''), 2000);
+    load();
+  } catch (err) {
+    alert(err.response?.data?.message || 'Failed to save draft');
+  }
+};
+
+const seal = async () => {
+  if (!title.trim() || !content.trim()) {
+    alert('Title and content are required');
+    return;
+  }
+
+  try {
+    let id = draftId;
+
+    if (!id) {
+      const { data } = await api.post('/letters', {
+        title,
+        content,
+        openDate,
+        status: 'Draft',
+      });
+      id = data._id;
+    } else {
+      await api.put(`/letters/${id}`, {
+        title,
+        content,
+        openDate,
+      });
+    }
+
+    await api.post(`/letters/${id}/seal`, { openDate });
+
+    resetComposer();
+    load();
+  } catch (err) {
+    alert(err.response?.data?.message || 'Failed to seal letter');
+  }
+};
 
   const openLetter = async (id) => {
     await api.post(`/letters/${id}/open`);
-    load();
+    navigate(`/letters/${id}`);
   };
 
   const quickDates = [
@@ -58,12 +119,18 @@ export default function FutureLetters() {
         <PaperCard tape>
           <p className="text-xs tracking-widest text-[#b35a38]">A LETTER TO THE FUTURE</p>
           <h2 className="font-serif text-3xl font-bold">Dear future me,</h2>
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Give this letter a title..."
+            className="mt-3 w-full rounded-lg bg-[#4a3728]/80 px-3 py-2 font-serif text-base text-[#f5f1e6] placeholder:text-[#d4c4b0]/50 focus:outline-none"
+          />
           <textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
             rows={8}
             placeholder="Write what your future self needs to hear..."
-            className="mt-4 w-full rounded-xl bg-[#4a3728] p-4 font-serif text-lg italic text-[#f5f1e6] placeholder:text-[#d4c4b0]/50 focus:outline-none"
+            className="mt-3 w-full rounded-xl bg-[#4a3728] p-4 font-serif text-lg italic text-[#f5f1e6] placeholder:text-[#d4c4b0]/50 focus:outline-none"
           />
           <p className="mt-2 flex items-center gap-2 text-xs opacity-60">
             <Lock className="h-3 w-3" /> Sealed until the date you choose — even from you
@@ -106,9 +173,12 @@ export default function FutureLetters() {
         </div>
 
         <div className="flex items-center justify-between">
-          <button onClick={saveDraft} className="text-sm underline">
-            Save as draft
-          </button>
+          <div className="flex items-center gap-3">
+            <button onClick={saveDraft} className="text-sm underline">
+              {draftId ? 'Update draft' : 'Save as draft'}
+            </button>
+            {savedMessage && <span className="text-xs text-green-700">{savedMessage}</span>}
+          </div>
           <button onClick={seal} className="rounded-full bg-[#b35a38] px-6 py-3 text-white flex items-center gap-2">
             <Lock className="h-4 w-4" /> Seal & Schedule
           </button>
@@ -125,6 +195,27 @@ export default function FutureLetters() {
           <p className="font-serif italic text-sm">&ldquo;The future depends on what you do today.&rdquo;</p>
         </PaperCard>
 
+        {letters.drafts?.length > 0 && (
+          <PaperCard>
+            <h3 className="mb-3 font-serif font-bold">Drafts</h3>
+            <div className="space-y-2">
+              {letters.drafts.map((l) => (
+                <button
+                  key={l._id}
+                  onClick={() => editDraft(l)}
+                  className="flex w-full items-center gap-3 rounded-lg bg-[#ebe4d3]/50 p-3 text-left text-sm"
+                >
+                  <Pencil className="h-4 w-4 opacity-60" />
+                  <div>
+                    <p className="line-clamp-1 font-medium">{l.title || 'Untitled letter'}</p>
+                    <p className="text-xs opacity-60">Not yet sealed</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </PaperCard>
+        )}
+
         <PaperCard>
           <div className="mb-3 flex items-center justify-between">
             <h3 className="font-serif font-bold">Sealed Capsules</h3>
@@ -139,7 +230,7 @@ export default function FutureLetters() {
               >
                 <Mail className="h-4 w-4 text-green-700" />
                 <div>
-                  <p className="font-medium line-clamp-1">{l.content.slice(0, 30)}...</p>
+                  <p className="font-medium line-clamp-1">{l.title || l.content.slice(0, 30)}</p>
                   <p className="text-xs text-green-700">Ready to open now</p>
                 </div>
               </motion.button>
@@ -148,13 +239,34 @@ export default function FutureLetters() {
               <div key={l._id} className="flex items-center gap-3 rounded-lg bg-[#ebe4d3]/50 p-3 text-sm">
                 <Lock className="h-4 w-4" />
                 <div>
-                  <p className="line-clamp-1">{l.content.slice(0, 30)}...</p>
+                  <p className="line-clamp-1">{l.title || l.content.slice(0, 30)}</p>
                   <p className="text-xs opacity-60">Opens {new Date(l.openDate).toLocaleDateString()}</p>
                 </div>
               </div>
             ))}
           </div>
         </PaperCard>
+
+        {letters.opened?.length > 0 && (
+          <PaperCard>
+            <h3 className="mb-3 font-serif font-bold">Opened Letters</h3>
+            <div className="space-y-2">
+              {letters.opened.map((l) => (
+                <button
+                  key={l._id}
+                  onClick={() => navigate(`/letters/${l._id}`)}
+                  className="flex w-full items-center gap-3 rounded-lg bg-[#ebe4d3]/50 p-3 text-left text-sm"
+                >
+                  <Mail className="h-4 w-4 opacity-60" />
+                  <div>
+                    <p className="line-clamp-1 font-medium">{l.title || l.content.slice(0, 30)}</p>
+                    <p className="text-xs opacity-60">Opened {new Date(l.updatedAt).toLocaleDateString()}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </PaperCard>
+        )}
       </div>
     </div>
   );

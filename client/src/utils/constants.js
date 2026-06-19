@@ -22,7 +22,7 @@ export const NAV_ITEMS = [
   { path: '/dashboard', label: 'Dashboard', icon: 'LayoutDashboard' },
   { path: '/entries', label: 'Entries', icon: 'BookOpen' },
   { path: '/write', label: 'Write', icon: 'PenLine' },
-  { path: '/timeline', label: 'Memories Timeline', icon: 'Images' },
+  // { path: '/timeline', label: 'Memories Timeline', icon: 'Images' },
   { path: '/gallery', label: 'Photo Gallery', icon: 'Camera' },
   { path: '/letters', label: 'Future Letters', icon: 'Mail' },
   { path: '/reflection', label: 'Monthly Reflection', icon: 'Calendar' },
