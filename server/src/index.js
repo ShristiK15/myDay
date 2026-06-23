@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import dotenv from 'dotenv';
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
@@ -13,6 +13,7 @@ import userRoutes from './routes/userRoutes.js';
 import letterRoutes from './routes/letterRoutes.js';
 import reflectionRoutes from './routes/reflectionRoutes.js';
 
+dotenv.config();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.PORT || 5000;
