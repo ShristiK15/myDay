@@ -1,4 +1,4 @@
-import dotenv from 'dotenv';
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
@@ -42,4 +42,4 @@ app.use('/api/reflections', reflectionRoutes);
 
 app.use(errorHandler);
 
-app.listen(PORT, () => console.log(`MyDay server running on port ${PORT}`));
+app.listen(PORT,"0.0.0.0", () => console.log(`MyDay server running on port ${PORT}`));

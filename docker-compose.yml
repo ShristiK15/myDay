@@ -1,0 +1,23 @@
+version: '3.9'
+services:
+  server:
+    build: ./server
+    container_name: mydayserver
+    ports:
+      - "5000:5000"
+    networks:
+      - fullstack-net
+    restart: unless-stopped
+  
+  client:
+    build: ./client
+    container_name: mydayclient
+    ports:
+      - "5173:8080"
+    networks:
+      - fullstack-net
+    restart: unless-stopped
+  
+networks:
+  fullstack-net:  
+    driver: bridge
