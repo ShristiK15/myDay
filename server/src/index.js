@@ -12,6 +12,7 @@ import entryRoutes from './routes/entryRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import letterRoutes from './routes/letterRoutes.js';
 import reflectionRoutes from './routes/reflectionRoutes.js';
+import transporter from './config/mailer.js';
 
 dotenv.config();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -20,6 +21,7 @@ const PORT = process.env.PORT || 5000;
 
 configureCloudinary();
 connectDB().catch((err) => console.error('DB connection failed:', err.message));
+await transporter.verify();
 
 app.use(
   cors({

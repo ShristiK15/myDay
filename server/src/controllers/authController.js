@@ -2,7 +2,7 @@ import crypto from 'crypto';
 import User from '../models/User.js';
 import { signToken } from '../middleware/auth.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
-import { sendEmail } from '../utils/mailer.js';
+import { sendEmail } from '../utils/sendEmail.js';
 
 const sendUserResponse = (user, token, res) => {
   res.json({
