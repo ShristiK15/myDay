@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import User from '../models/User.js';
 import { signToken } from '../middleware/auth.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
+import { sendEmail } from '../utils/mailer.js';
 
 const sendUserResponse = (user, token, res) => {
   res.json({
@@ -75,14 +76,40 @@ export const forgotPassword = asyncHandler(async (req, res) => {
   const token = crypto.randomBytes(32).toString('hex');
   user.resetPasswordToken = crypto.createHash('sha256').update(token).digest('hex');
   user.resetPasswordExpires = Date.now() + 3600000;
-  await user.save();
+  await user.save({
+    validateBeforeSave:false
+  });
 
-  const resetUrl = `${process.env.CLIENT_URL || 'http://localhost:5173'}/reset-password/${token}`;
-  // In production, send email via nodemailer
-  if (process.env.NODE_ENV === 'development') {
-    console.log('Reset URL:', resetUrl);
+      const resetUrl=`${process.env.CLIENT_URL || 'http://localhost:5173'}/reset-password/${resetToken}`;
+     const message=`
+    <h2>Password Reset</h2>
+    <p>Click below link to reset password</p>
+    <a href="${resetUrl}">
+    Reset Password
+    </a>
+    `;
+
+      try {
+  
+      await sendEmail({
+          email: user.email,
+          subject: "Password Reset",
+          message
+      });
+  
+      res.status(200).json({
+          success: true,
+          message: "Email sent successfully"
+      });
+  
+  } catch (error) {
+  
+      res.status(500).json({
+          success: false,
+          message: "Failed to send email"
+      });
+  
   }
-  res.json({ message: 'If that email exists, a reset link was sent', ...(process.env.NODE_ENV === 'development' && { resetUrl }) });
 });
 
 export const resetPassword = asyncHandler(async (req, res) => {
