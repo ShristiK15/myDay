@@ -1,17 +1,16 @@
 import transporter from "../config/mailer.js";
 
 export const sendEmail = async ({
-    email,
-    subject,
-    message
+  to,
+  subject,
+  html
 }) => {
+  const info = await transporter.sendMail({
+    from: `MyDay <${process.env.SMTP_USER}>`,
+    to,
+    subject,
+    html
+  });
 
-    const info = await transporter.sendMail({
-        from: `MyDay <${process.env.SMTP_USER}>`,
-        to: email,
-        subject,
-        html: message
-    });
-
-    return info;
+  return info;
 };
