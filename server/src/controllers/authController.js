@@ -73,42 +73,33 @@ export const forgotPassword = asyncHandler(async (req, res) => {
   if (!user) {
     return res.json({ message: 'If that email exists, a reset link was sent' });
   }
+
   const token = crypto.randomBytes(32).toString('hex');
   user.resetPasswordToken = crypto.createHash('sha256').update(token).digest('hex');
   user.resetPasswordExpires = Date.now() + 3600000;
-  await user.save({
-    validateBeforeSave:false
-  });
+  await user.save({ validateBeforeSave: false });
 
-      const resetUrl=`${process.env.CLIENT_URL || 'http://localhost:5173'}/reset-password/${resetToken}`;
-     const message=`
+  const resetUrl = `${process.env.CLIENT_URL || 'http://localhost:5173'}/reset-password/${token}`;
+  const html = `
     <h2>Password Reset</h2>
     <p>Click below link to reset password</p>
-    <a href="${resetUrl}">
-    Reset Password
-    </a>
-    `;
+    <a href="${resetUrl}">Reset Password</a>
+  `;
 
-      try {
-  
-      await sendEmail({
-          email: user.email,
-          subject: "Password Reset",
-          message
-      });
-  
-      res.status(200).json({
-          success: true,
-          message: "Email sent successfully"
-      });
-  
+  try {
+    await sendEmail({
+      to: user.email,
+      subject: "Password Reset",
+      html
+    });
+
+    res.status(200).json({ success: true, message: "Email sent successfully" });
   } catch (error) {
-  
-      res.status(500).json({
-          success: false,
-          message: "Failed to send email"
-      });
-  
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+    await user.save({ validateBeforeSave: false });
+
+    res.status(500).json({ success: false, message: "Failed to send email" });
   }
 });
 
